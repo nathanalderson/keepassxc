@@ -29,7 +29,6 @@ class DatabaseWidget;
 class DatabaseWidgetStateSync;
 class DatabaseOpenWidget;
 class QFile;
-class QLockFile;
 class MessageWidget;
 
 struct DatabaseManagerStruct
@@ -37,7 +36,6 @@ struct DatabaseManagerStruct
     DatabaseManagerStruct();
 
     DatabaseWidget* dbWidget;
-    QLockFile* lockFile;
     QString filePath;
     QString canonicalFilePath;
     QString fileName;

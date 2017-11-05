@@ -19,7 +19,6 @@
 #include "DatabaseTabWidget.h"
 
 #include <QFileInfo>
-#include <QLockFile>
 #include <QTabWidget>
 #include <QPushButton>
 
@@ -42,7 +41,6 @@
 
 DatabaseManagerStruct::DatabaseManagerStruct()
     : dbWidget(nullptr)
-    , lockFile(nullptr)
     , saveToFilename(false)
     , modified(false)
     , readOnly(false)
@@ -157,44 +155,8 @@ void DatabaseTabWidget::openDatabase(const QString& fileName, const QString& pw,
     }
     file.close();
 
-    QLockFile* lockFile = new QLockFile(QString("%1/.%2.lock").arg(fileInfo.canonicalPath(), fileInfo.fileName()));
-    lockFile->setStaleLockTime(0);
-
-    if (!dbStruct.readOnly && !lockFile->tryLock()) {
-        // for now silently ignore if we can't create a lock file
-        // due to lack of permissions
-        if (lockFile->error() != QLockFile::PermissionError) {
-            QMessageBox msgBox;
-            msgBox.setWindowTitle(tr("Database already opened"));
-            msgBox.setText(tr("The database you are trying to open is locked by another instance of KeePassXC.\n\n"
-                              "Do you want to open it anyway?"));
-            msgBox.setIcon(QMessageBox::Question);
-            msgBox.addButton(QMessageBox::Yes);
-            msgBox.addButton(QMessageBox::No);
-            auto readOnlyButton = msgBox.addButton(tr("Open read-only"), QMessageBox::NoRole);
-            msgBox.setDefaultButton(readOnlyButton);
-            msgBox.setEscapeButton(QMessageBox::No);
-            auto result = msgBox.exec();
-
-            if (msgBox.clickedButton() == readOnlyButton) {
-                dbStruct.readOnly = true;
-                delete lockFile;
-                lockFile = nullptr;
-            } else if (result == QMessageBox::Yes) {
-                // take over the lock file if possible
-                if (lockFile->removeStaleLockFile()) {
-                    lockFile->tryLock();
-                }
-            } else {
-                delete lockFile;
-                return;
-            }
-        }
-    }
-
     Database* db = new Database();
     dbStruct.dbWidget = new DatabaseWidget(db, this);
-    dbStruct.lockFile = lockFile;
     dbStruct.saveToFilename = !dbStruct.readOnly;
 
     dbStruct.filePath = fileInfo.absoluteFilePath();
@@ -332,7 +294,6 @@ void DatabaseTabWidget::deleteDatabase(Database* db)
     removeTab(index);
     toggleTabbar();
     m_dbList.remove(db);
-    delete dbStruct.lockFile;
     delete dbStruct.dbWidget;
     delete db;
 
@@ -396,35 +357,6 @@ bool DatabaseTabWidget::saveDatabaseAs(Database* db)
                                                         nullptr, 0, "kdbx");
         if (!fileName.isEmpty()) {
             QFileInfo fileInfo(fileName);
-            QString lockFilePath;
-            if (fileInfo.exists()) {
-                // returns empty string when file doesn't exist
-                lockFilePath = fileInfo.canonicalPath();
-            } else {
-                lockFilePath = fileInfo.absolutePath();
-            }
-            QString lockFileName = QString("%1/.%2.lock").arg(lockFilePath, fileInfo.fileName());
-            QScopedPointer<QLockFile> lockFile(new QLockFile(lockFileName));
-            lockFile->setStaleLockTime(0);
-            if (!lockFile->tryLock()) {
-                // for now silently ignore if we can't create a lock file
-                // due to lack of permissions
-                if (lockFile->error() != QLockFile::PermissionError) {
-                    QMessageBox::StandardButton result = MessageBox::question(this, tr("Save database as"),
-                        tr("The database you are trying to save as is locked by another instance of KeePassXC.\n"
-                        "Do you want to save it anyway?"),
-                        QMessageBox::Yes | QMessageBox::No);
-
-                    if (result == QMessageBox::No) {
-                        return false;
-                    } else {
-                        // take over the lock file if possible
-                        if (lockFile->removeStaleLockFile()) {
-                            lockFile->tryLock();
-                        }
-                    }
-                }
-            }
 
             // setup variables so saveDatabase succeeds
             dbStruct.saveToFilename = true;
@@ -447,8 +379,6 @@ bool DatabaseTabWidget::saveDatabaseAs(Database* db)
             dbStruct.canonicalFilePath = fileInfo.canonicalFilePath();
             dbStruct.fileName = fileInfo.fileName();
             dbStruct.dbWidget->updateFilename(dbStruct.filePath);
-            delete dbStruct.lockFile;
-            dbStruct.lockFile = lockFile.take();
             updateTabName(db);
             updateLastDatabases(dbStruct.filePath);
             return true;
