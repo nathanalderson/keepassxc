@@ -105,9 +105,33 @@ void TestDatabase::testEmptyRecycleBinWithHierarchicalData()
     QVERIFY(db->metadata()->recycleBin()->children().empty());
 
     QTemporaryFile afterCleanup;
+    afterCleanup.open();
     KeePass2Writer writer;
     writer.writeDatabase(&afterCleanup, db);
     QVERIFY(afterCleanup.size() < initialSize);
 
     delete db;
 }
+
+void TestDatabase::testLastIOHash()
+{
+    QString filename = QString(KEEPASSX_TEST_DATA_DIR).append("/Compressed.kdbx");
+    CompositeKey key;
+    key.addKey(PasswordKey(""));
+    Database* db = Database::openDatabaseFile(filename, key);
+    QVERIFY(db);
+
+    // verify expected hash from `sha1sum -b test/data/Compressed.kdbx`
+    QByteArray expectedInitialHash("a61ed93c4206e82b203b1d6d39e8a716c9363d74");
+    QCOMPARE(db->lastIOHash().toHex(), expectedInitialHash);
+
+    // change something and make sure the hash changes
+    db->setTransformRounds(1337);
+    QTemporaryFile tmpFile;
+    tmpFile.open();
+    db->saveToFile(tmpFile.fileName());
+    QVERIFY(db->lastIOHash().toHex() != expectedInitialHash);
+
+    delete db;
+}
+

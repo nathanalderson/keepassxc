@@ -94,12 +94,14 @@ public:
     const CompositeKey& key() const;
     QByteArray challengeResponseKey() const;
     bool challengeMasterSeed(const QByteArray& masterSeed);
+    QByteArray lastIOHash() const;
 
     void setCipher(const Uuid& cipher);
     void setCompressionAlgo(Database::CompressionAlgorithm algo);
     bool setTransformRounds(quint64 rounds);
     bool setKey(const CompositeKey& key, const QByteArray& transformSeed,
                 bool updateChangedTime = true);
+    void setLastIOHash(const QByteArray& hash);
 
     /**
      * Sets the database key and generates a random transform seed.
@@ -152,6 +154,7 @@ private:
     QTimer* m_timer;
     DatabaseData m_data;
     bool m_emitModified;
+    QByteArray m_lastIOHash;
 
     Uuid m_uuid;
     static QHash<Uuid, Database*> m_uuidMap;

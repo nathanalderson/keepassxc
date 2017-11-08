@@ -18,6 +18,7 @@
 
 #include "Database.h"
 
+#include <QCryptographicHash>
 #include <QFile>
 #include <QSaveFile>
 #include <QTextStream>
@@ -37,6 +38,20 @@
 
 QHash<Uuid, Database*> Database::m_uuidMap;
 
+namespace {
+
+QByteArray getFileHash(QString filePath) {
+    QFile f(filePath);
+    if (f.exists() && f.open(QIODevice::ReadOnly)) {
+        QCryptographicHash hasher(QCryptographicHash::Sha1);
+        hasher.addData(&f);
+        return hasher.result();
+    }
+    return QByteArray(0);
+}
+
+}
+
 Database::Database()
     : m_metadata(new Metadata(this))
     , m_timer(new QTimer(this))
@@ -47,6 +62,7 @@ Database::Database()
     m_data.compressionAlgo = CompressionGZip;
     m_data.transformRounds = 100000;
     m_data.hasKey = false;
+    m_lastIOHash.clear();
 
     setRootGroup(new Group());
     rootGroup()->setUuid(Uuid::random());
@@ -196,6 +212,10 @@ bool Database::challengeMasterSeed(const QByteArray& masterSeed)
     return m_data.key.challenge(masterSeed, m_data.challengeResponseKey);
 }
 
+QByteArray Database::lastIOHash() const {
+    return m_lastIOHash;
+}
+
 void Database::setCipher(const Uuid& cipher)
 {
     Q_ASSERT(!cipher.isNull());
@@ -248,6 +268,16 @@ bool Database::setKey(const CompositeKey& key, const QByteArray& transformSeed, 
     emit modifiedImmediate();
 
     return true;
+}
+
+void Database::setLastIOHash(const QByteArray& hash) {
+	if (hash.size() != 20) { // sha1's are 20 bytes
+        QTextStream errorTextStream(stderr);
+        errorTextStream << "Invalid hash size" << endl;
+    }
+    else {
+        m_lastIOHash = hash;
+    }
 }
 
 bool Database::setKey(const CompositeKey& key)
@@ -420,6 +450,8 @@ Database* Database::openDatabaseFile(QString fileName, CompositeKey key)
     KeePass2Reader reader;
     Database* db = reader.readDatabase(&dbFile, key);
 
+    db->setLastIOHash(getFileHash(fileName));
+
     if (reader.hasError()) {
         qCritical("Error while parsing the database: %s", qPrintable(reader.errorString()));
         return nullptr;
@@ -471,6 +503,7 @@ QString Database::saveToFile(QString filePath)
 
         if (saveFile.commit()) {
             // successfully saved database file
+            setLastIOHash(getFileHash(filePath));
             return QString();
         } else {
             return saveFile.errorString();
