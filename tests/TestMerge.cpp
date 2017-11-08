@@ -447,6 +447,63 @@ void TestMerge::testMergeCustomIcons()
     delete dbSource;
 }
 
+/**
+ * isSafeMerge should return true if both databases are identical
+ */
+void TestMerge::testIsSafeMergeIdentical()
+{
+    Database* dbDestination = new Database();
+    Database* dbSource = createTestDatabase();
+    dbSource->setRootGroup(dbDestination->rootGroup()->clone(Entry::CloneNoFlags));
+    bool isSafe = dbDestination->isSafeMerge(dbSource);
+    QVERIFY(isSafe);
+}
+
+/**
+ * isSafeMerge should return true if both databases have new entries with different names
+ */
+/* void TestMerge::testIsSafeMergeNewEntriesDifferent() */
+/* { */
+/* } */
+
+/**
+ * isSafeMerge should return false if both databases have new entries with the same name
+ */
+// void TestMerge::testIsSafeMergeNewEntriesSame()
+// {
+// }
+
+/**
+ * isSafeMerge should return true if entries were just moved
+ */
+// void TestMerge::testIsSafeMergeMoved()
+// {
+// }
+
+/**
+ * isSafeMerge should return false if an entry was modified in both
+ */
+void TestMerge::testIsSafeMergeConflict()
+{
+    Database* dbDestination = createTestDatabase();
+    Database* dbSource = new Database();
+    dbSource->setRootGroup(dbDestination->rootGroup()->clone(Entry::CloneNoFlags));
+
+    Entry* entry1src = dbSource->rootGroup()->findEntry("entry1");
+    QTest::qSleep(1);
+    entry1src->beginUpdate();
+    entry1src->endUpdate();
+
+    Entry* entry1dst = dbDestination->rootGroup()->findEntry("entry1");
+    QTest::qSleep(1);
+    entry1dst->beginUpdate();
+    entry1dst->setPassword("passwordDst");
+    entry1dst->endUpdate();
+
+    bool isSafe = dbDestination->isSafeMerge(dbSource);
+    QVERIFY(!isSafe);
+}
+
 Database* TestMerge::createTestDatabase()
 {
     Database* db = new Database();

@@ -39,6 +39,11 @@ private slots:
     void testUpdateEntryDifferentLocation();
     void testMergeAndSync();
     void testMergeCustomIcons();
+    void testIsSafeMergeIdentical();
+    // void testIsSafeMergeNewEntriesDifferent();
+    // void testIsSafeMergeNewEntriesSame();
+    // void testIsSafeMergeMoved();
+    void testIsSafeMergeConflict();
 
 private:
     Database* createTestDatabase();

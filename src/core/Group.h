@@ -128,6 +128,7 @@ public:
     Group* clone(Entry::CloneFlags entryFlags = Entry::CloneNewUuid | Entry::CloneResetTimeInfo,
                  bool shallow = false) const;
     void copyDataFrom(const Group* other);
+    bool isSafeMerge(const Group* other);
     void merge(const Group* other);
     QString print(bool recursive = false, int depth = 0);
 

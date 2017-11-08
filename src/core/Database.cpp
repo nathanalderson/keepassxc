@@ -347,6 +347,10 @@ void Database::emptyRecycleBin()
     }
 }
 
+bool Database::isSafeMerge(const Database* other) {
+    return m_rootGroup->isSafeMerge(other->rootGroup());
+}
+
 void Database::merge(const Database* other)
 {
     m_rootGroup->merge(other->rootGroup());

@@ -668,9 +668,41 @@ QSet<Uuid> Group::customIconsRecursive() const
     return result;
 }
 
+bool Group::isSafeMerge(const Group* other)
+{
+    Group* rootGroup = this;
+    while (rootGroup->parentGroup()) {
+        rootGroup = rootGroup->parentGroup();
+    }
+
+    // check the entries in this group
+    bool isSafe = true;
+    const QList<Entry*> dbEntries = other->entries();
+    for (Entry* entry : dbEntries) {
+        Entry* existingEntry = rootGroup->findEntryByUuid(entry->uuid());
+        if(existingEntry) {
+            isSafe = false; //  TODO: actually check
+            break;
+        }
+    }
+
+    // check subgroups
+    if (isSafe) {
+        const QList<Group*> dbChildren = other->children();
+        for (Group* group : dbChildren) {
+            // groups are searched by name instead of uuid
+            Group* child = findChildByName(group->name());
+            if (child) {
+                isSafe &= child->isSafeMerge(group);
+            }
+        }
+    }
+
+    return isSafe;
+}
+
 void Group::merge(const Group* other)
 {
-
     Group* rootGroup = this;
     while (rootGroup->parentGroup()) {
         rootGroup = rootGroup->parentGroup();
@@ -701,8 +733,9 @@ void Group::merge(const Group* other)
     const QList<Group*> dbChildren = other->children();
     for (Group* group : dbChildren) {
         // groups are searched by name instead of uuid
-        if (findChildByName(group->name())) {
-            findChildByName(group->name())->merge(group);
+        Group* child = findChildByName(group->name());
+        if (child) {
+            child->merge(group);
         } else {
             qDebug("New group %s detected. Creating it.", qPrintable(group->name()));
             Group* newGroup = group->clone(Entry::CloneNoFlags, true);

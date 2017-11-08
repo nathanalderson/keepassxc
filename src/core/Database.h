@@ -113,6 +113,7 @@ public:
     void emptyRecycleBin();
     void setEmitModified(bool value);
     void copyAttributesFrom(const Database* other);
+    bool isSafeMerge(const Database* other);
     void merge(const Database* other);
     QString saveToFile(QString filePath);
 
