@@ -18,7 +18,6 @@
 
 #include "Database.h"
 
-#include <QCryptographicHash>
 #include <QFile>
 #include <QSaveFile>
 #include <QTextStream>
@@ -28,6 +27,7 @@
 #include "cli/Utils.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
+#include "core/Tools.h"
 #include "crypto/Random.h"
 #include "format/KeePass2.h"
 #include "format/KeePass2Reader.h"
@@ -37,20 +37,6 @@
 #include "keys/CompositeKey.h"
 
 QHash<Uuid, Database*> Database::m_uuidMap;
-
-namespace {
-
-QByteArray getFileHash(QString filePath) {
-    QFile f(filePath);
-    if (f.exists() && f.open(QIODevice::ReadOnly)) {
-        QCryptographicHash hasher(QCryptographicHash::Sha1);
-        hasher.addData(&f);
-        return hasher.result();
-    }
-    return QByteArray(0);
-}
-
-}
 
 Database::Database()
     : m_metadata(new Metadata(this))
@@ -450,7 +436,7 @@ Database* Database::openDatabaseFile(QString fileName, CompositeKey key)
     KeePass2Reader reader;
     Database* db = reader.readDatabase(&dbFile, key);
 
-    db->setLastIOHash(getFileHash(fileName));
+    db->setLastIOHash(Tools::getFileHash(fileName));
 
     if (reader.hasError()) {
         qCritical("Error while parsing the database: %s", qPrintable(reader.errorString()));
@@ -503,7 +489,7 @@ QString Database::saveToFile(QString filePath)
 
         if (saveFile.commit()) {
             // successfully saved database file
-            setLastIOHash(getFileHash(filePath));
+            setLastIOHash(Tools::getFileHash(filePath));
             return QString();
         } else {
             return saveFile.errorString();

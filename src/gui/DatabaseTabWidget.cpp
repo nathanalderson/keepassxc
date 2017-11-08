@@ -28,6 +28,7 @@
 #include "core/Database.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
+#include "core/Tools.h"
 #include "format/CsvExporter.h"
 #include "gui/Clipboard.h"
 #include "gui/DatabaseWidget.h"
@@ -312,13 +313,28 @@ bool DatabaseTabWidget::closeAllDatabases()
     return true;
 }
 
-bool DatabaseTabWidget::saveDatabase(Database* db)
+bool DatabaseTabWidget::saveDatabase(Database* db, bool clobber)
 {
     DatabaseManagerStruct& dbStruct = m_dbList[db];
 
     if (dbStruct.saveToFilename) {
 
         dbStruct.dbWidget->blockAutoReload(true);
+
+        if (!clobber && !safeToOverwrite(db, dbStruct.canonicalFilePath)) {
+            /* switch (m_saveActionPrompt->prompt()) { */
+            /* case overwrite: */
+            /*     break; */
+            /* case cancel: */
+            /*     return false; */
+            /* case saveAs: */
+            /*     return saveDatabaseAs(db); */
+            /* case merge: */
+            /*     db->merge(m_saveActionPrompt->mergeSrcDb()); */
+            /*     break; */
+            /* } */
+        }
+
         QString errorMessage = db->saveToFile(dbStruct.canonicalFilePath);
         dbStruct.dbWidget->blockAutoReload(false);
 
@@ -790,6 +806,13 @@ void DatabaseTabWidget::connectDatabase(Database* newDb, Database* oldDb)
     connect(newDb, SIGNAL(nameTextChanged()), SLOT(updateTabNameFromDbSender()));
     connect(newDb, SIGNAL(modified()), SLOT(modified()));
     newDb->setEmitModified(true);
+}
+
+bool DatabaseTabWidget::safeToOverwrite(const Database* db, QString filePath) const {
+    QFile file(filePath);
+    if (!file.exists())
+        return true;
+    return db->lastIOHash() == Tools::getFileHash(filePath);
 }
 
 void DatabaseTabWidget::performGlobalAutoType()

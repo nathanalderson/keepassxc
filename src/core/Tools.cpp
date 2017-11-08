@@ -20,6 +20,8 @@
 #include "Tools.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
+#include <QFile>
 #include <QImageReader>
 #include <QIODevice>
 #include <QLocale>
@@ -355,6 +357,16 @@ Cleanup:
 #endif
 
     return bSuccess;
+}
+
+QByteArray getFileHash(QString filePath) {
+    QFile f(filePath);
+    if (f.exists() && f.open(QIODevice::ReadOnly)) {
+        QCryptographicHash hasher(QCryptographicHash::Sha1);
+        hasher.addData(&f);
+        return hasher.result();
+    }
+    return QByteArray(0);
 }
 
 } // namespace Tools

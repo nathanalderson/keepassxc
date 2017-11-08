@@ -104,7 +104,7 @@ private slots:
     void emitDatabaseUnlockedFromDbWidgetSender();
 
 private:
-    bool saveDatabase(Database* db);
+    bool saveDatabase(Database* db, bool clobber = false);
     bool saveDatabaseAs(Database* db);
     bool closeDatabase(Database* db);
     void deleteDatabase(Database* db);
@@ -115,6 +115,7 @@ private:
     void insertDatabase(Database* db, const DatabaseManagerStruct& dbStruct);
     void updateLastDatabases(const QString& filename);
     void connectDatabase(Database* newDb, Database* oldDb = nullptr);
+    bool safeToOverwrite(const Database* db, QString filePath) const;
 
     QHash<Database*, DatabaseManagerStruct> m_dbList;
     DatabaseWidgetStateSync* m_dbWidgetStateSync;
